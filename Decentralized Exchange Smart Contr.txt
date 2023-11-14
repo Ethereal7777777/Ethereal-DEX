@@ -1,0 +1,62 @@
+# Decentralized Exchange Smart Contract
+
+class DecentralizedExchange:
+    def __init__(self):
+        self.tokens = {}
+        self.orders = []
+
+    def add_token(self, token_address):
+        if token_address not in self.tokens:
+            self.tokens[token_address] = 0
+
+    def deposit(self, token_address, amount):
+        if token_address in self.tokens:
+            self.tokens[token_address] += amount
+
+    def create_order(self, token_buy, amount_buy, token_sell, amount_sell):
+        order = {
+            'token_buy': token_buy,
+            'amount_buy': amount_buy,
+            'token_sell': token_sell,
+            'amount_sell': amount_sell
+        }
+        self.orders.append(order)
+
+    def execute_order(self, order_index):
+        order = self.orders[order_index]
+        if (
+            order['token_buy'] in self.tokens and
+            order['token_sell'] in self.tokens and
+            self.tokens[order['token_sell']] >= order['amount_sell']
+        ):
+            # Execute the order
+            self.tokens[order['token_buy']] += order['amount_buy']
+            self.tokens[order['token_sell']] -= order['amount_sell']
+            del self.orders[order_index]
+            return True
+        else:
+            return False
+
+# Example usage:
+
+# Create DEX
+dex = DecentralizedExchange()
+
+# Add tokens
+dex.add_token("ETH")
+dex.add_token("DAI")
+
+# Deposit tokens
+dex.deposit("ETH", 100)
+dex.deposit("DAI", 1000)
+
+# Create an order
+dex.create_order("DAI", 50, "ETH", 0.1)
+
+# Execute the order
+result = dex.execute_order(0)
+
+if result:
+    print("Order executed successfully!")
+else:
+    print("Order execution failed.")
