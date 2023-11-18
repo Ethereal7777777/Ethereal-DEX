@@ -1,0 +1,30 @@
+// app.js
+document.addEventListener('DOMContentLoaded', async () => {
+    if (window.ethereum) {
+        window.web3 = new Web3(window.ethereum);
+        await window.ethereum.enable();
+    } else if (window.web3) {
+        window.web3 = new Web3(window.web3.currentProvider);
+    } else {
+        console.log('Non-Ethereum browser detected. You should consider trying MetaMask!');
+    }
+
+    const contractAddress = 'YOUR_CONTRACT_ADDRESS'; // Replace with the deployed contract address
+    const contractABI = [
+        // Replace with the ABI (Application Binary Interface) of your smart contract
+    ];
+
+    const simpleStorageContract = new web3.eth.Contract(contractABI, contractAddress);
+
+    // Display current value
+    const currentValueElement = document.getElementById('displayValue');
+    const currentValue = await simpleStorageContract.methods.get().call();
+    currentValueElement.textContent = currentValue;
+
+    // Set new value
+    window.setValue = async () => {
+        const newValue = document.getElementById('newValue').value;
+        await simpleStorageContract.methods.set(newValue).send({ from: 'YOUR_WALLET_ADDRESS' }); // Replace with your wallet address
+        currentValueElement.textContent = newValue;
+    };
+});
