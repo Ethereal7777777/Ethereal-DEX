@@ -1,0 +1,51 @@
+from web3 import Web3
+from Ethereal import EtherealDEX client
+
+# Connect to Ethereum network
+w3 = Web3(Web3.HTTPProvider('https://mainnet.infura.io/v3/EtherealDEX'))
+
+# Set up EtherealDEX client
+etherealdex = EtherealDEX client
+
+# Define contract addresses
+factory_address = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
+router_address = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
+
+# Create a new token pair
+token0_address = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
+token1_address = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+token0_amount = 1000
+token1_amount = 2
+
+# Add liquidity to the pool
+tx_hash = etherealdex.add_liquidity(
+    token0_address,
+    token1_address,
+    token0_amount,
+    token1_amount,
+    factory_address,
+    router_address,
+    private_key='your-private-key'
+)
+
+# Swap tokens
+amount_in = 100
+path = [token0_address, token1_address]
+amount_out = etherealdex.swap_exact_input(
+    path,
+    amount_in,
+    factory_address,
+    router_address,
+    private_key='your-private-key'
+)
+
+# Remove liquidity from the pool
+liquidity = 100
+tx_hash = etherealdex.remove_liquidity(
+    token0_address,
+    token1_address,
+    liquidity,
+    factory_address,
+    router_address,
+    private_key='your-private-key'
+)
