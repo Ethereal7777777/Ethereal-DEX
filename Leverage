@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract LeverageDEX is Ownable {
+    using SafeMath for uint256;
+
+    struct Position {
+        address trader;
+        address token;
+        uint256 amount;
+        uint256 leverage;
+        uint256 entryPrice;
+    }
+
+    mapping(address => Position) public positions;
+    uint256 public feePercentage = 100; // 1% fee initially (percentage multiplied by 100)
+    uint256 public constant FEE_DIVISOR = 10000; // To calculate the fee percentage
+
+    event NewPosition(
+        address indexed trader,
+        address indexed token,
+        uint256 amount,
+        uint256 leverage,
+        uint256 entryPrice
+    );
+    event PositionClosed(address indexed trader, address indexed token, uint256 amount, uint256 profit);
+
+    modifier onlyTrader(address token) {
+        require(positions[msg.sender][token].trader == msg.sender, "Not authorized");
+        _;
+    }
+
+    function openPosition(
+        address token,
+        uint256 amount,
+        uint256 leverage,
+        uint256 entryPrice
+    ) external {
+        require(amount > 0, "Amount must be greater than 0");
+        require(leverage > 0, "Leverage must be greater than 0");
+        require(positions[msg.sender][token].trader == address(0), "Position already exists");
+
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+
+        positions[msg.sender][token] = Position({
+            trader: msg.sender,
+            token: token,
+            amount: amount,
+            leverage: leverage,
+            entryPrice: entryPrice
+        });
+
+        emit NewPosition(msg.sender, token, amount, leverage, entryPrice);
+    }
+
+    function closePosition(address token) external onlyTrader(token) {
+        Position storage position = positions[msg.sender][token];
+        require(position.amount > 0, "No open position");
+
+        // Calculate profit or loss
+        uint256 currentPrice = getCurrentPrice(token);
+        uint256 profitLoss = calculateProfitLoss(position, currentPrice);
+
+        // Calculate and deduct fees
+        uint256 fee = profitLoss.mul(feePercentage).div(FEE_DIVISOR);
+        uint256 amountAfterFee = profitLoss.sub(fee);
+
+        // Transfer tokens and fees
+        IERC20(token).transfer(msg.sender, amountAfterFee);
+        if (fee > 0) {
+            IERC20(token).transfer(owner(), fee);
+        }
+
+        emit PositionClosed(msg.sender, token, position.amount, profitLoss);
+
+        // Clear the position
+        delete positions[msg.sender][token];
+    }
+
+    function getCurrentPrice(address token) public view returns (uint256) {
+        // Implement logic to get the current price from an oracle or external source
+        // For simplicity, return a fixed value
+        return 1000; // $1000 per token
+    }
+
+    function calculateProfitLoss(Position memory position, uint256 currentPrice) internal pure returns (uint256) {
+        if (position.entryPrice > currentPrice) {
+            // Profit if entry price is higher than the current price
+            return position.amount.mul(position.entryPrice.sub(currentPrice)).div(position.entryPrice);
+        } else {
+            // Loss if entry price is lower than or equal to the current price
+            return position.amount.mul(currentPrice.sub(position.entryPrice)).div(position.entryPrice);
+        }
+    }
+
+    function setFeePercentage(uint256 _feePercentage) external onlyOwner {
+        require(_feePercentage <= 500, "Fee too high"); // Cap the fee at 5%
+        feePercentage = _feePercentage;
+    }
+}
