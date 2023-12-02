@@ -1,0 +1,55 @@
+# Ethereal Bridge
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.pending_transactions = []
+
+    def add_block(self, sender, recipient, amount):
+        block = {
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount
+        }
+        self.pending_transactions = []  # Clear pending transactions
+        self.chain.append(block)
+
+    def add_transaction(self, sender, recipient, amount):
+        transaction = {
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount
+        }
+        self.pending_transactions.append(transaction)
+
+    def mine(self, miner):
+        if not self.pending_transactions:
+            return False
+
+        block = {
+            'transactions': self.pending_transactions,
+            'miner': miner
+        }
+        self.chain.append(block)
+        self.pending_transactions = []
+        return True
+
+# Example usage:
+blockchain1 = Blockchain()
+blockchain2 = Blockchain()
+
+# Transaction on blockchain1
+blockchain1.add_transaction("Alice", "Bob", 5)
+blockchain1.mine("Miner1")
+
+# Simulate the bridge by adding the transaction to blockchain2
+bridge_transaction = blockchain1.chain[-1]['transactions'][0]
+blockchain2.add_transaction(bridge_transaction['sender'], bridge_transaction['recipient'], bridge_transaction['amount'])
+blockchain2.mine("Miner2")
+
+# Print both blockchains
+print("Blockchain 1:")
+print(blockchain1.chain)
+
+print("\nBlockchain 2:")
+print(blockchain2.chain)
