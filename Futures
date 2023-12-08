@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract PerpetualSwap is Ownable {
+    using SafeERC20 for IERC20;
+
+    // Token being traded
+    IERC20 public token;
+
+    // Price oracle
+    address public priceOracle;
+
+    // Contract state
+    enum State { OPEN, CLOSED }
+    State public state;
+
+    // Positions
+    mapping(address => int256) public positions;
+
+    // Events
+    event Trade(address indexed trader, int256 amount, int256 price);
+    event PositionSettled(address indexed trader, int256 amount);
+
+    modifier onlyOpenState() {
+        require(state == State.OPEN, "PerpetualSwap: Contract is closed");
+        _;
+    }
+
+    modifier onlyPriceOracle() {
+        require(msg.sender == priceOracle, "PerpetualSwap: Caller is not the price oracle");
+        _;
+    }
+
+    constructor(IERC20 _token, address _priceOracle) {
+        token = _token;
+        priceOracle = _priceOracle;
+        state = State.OPEN;
+    }
+
+    function trade(int256 amount, int256 price) external onlyOpenState {
+        require(amount != 0, "PerpetualSwap: Amount cannot be zero");
+
+        // Calculate collateral change
+        int256 collateralChange = amount * price;
+
+        // Update trader position
+        positions[msg.sender] += collateralChange;
+
+        // Transfer collateral to/from trader
+        if (collateralChange > 0) {
+            token.safeTransferFrom(msg.sender, address(this), uint256(collateralChange));
+        } else {
+            token.safeTransfer(msg.sender, uint256(-collateralChange));
+        }
+
+        emit Trade(msg.sender, amount, price);
+    }
+
+    function settlePosition() external onlyOpenState {
+        int256 amount = positions[msg.sender];
+        require(amount != 0, "PerpetualSwap: No position to settle");
+
+        // Reset trader position
+        positions[msg.sender] = 0;
+
+        // Transfer profit or loss to/from trader
+        if (amount > 0) {
+            token.safeTransfer(msg.sender, uint256(amount));
+        } else {
+            token.safeTransferFrom(msg.sender, address(this), uint256(-amount));
+        }
+
+        emit PositionSettled(msg.sender, amount);
+    }
+
+    function close() external onlyOwner onlyOpenState {
+        state = State.CLOSED;
+    }
+
+    function setOpenState() external onlyOwner {
+        state = State.OPEN;
+    }
+
+    function setPriceOracle(address _priceOracle) external onlyOwner {
+        priceOracle = _priceOracle;
+    }
+}
