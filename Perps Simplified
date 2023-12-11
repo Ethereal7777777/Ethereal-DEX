@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract PerpetualSwap is Ownable {
+    using SafeERC20 for IERC20;
+
+    // Struct to represent a trade
+    struct Trade {
+        address trader;
+        int256 amount;
+        int256 price;
+    }
+
+    // Token being traded
+    IERC20 public token;
+
+    // Contract state
+    bool public isOpen;
+
+    // List of trades
+    Trade[] public trades;
+
+    // Events
+    event TradeExecuted(address indexed trader, int256 amount, int256 price);
+    event PositionSettled(address indexed trader, int256 amount);
+
+    modifier onlyOpenState() {
+        require(isOpen, "PerpetualSwap: Contract is closed");
+        _;
+    }
+
+    constructor(IERC20 _token) {
+        token = _token;
+        isOpen = true;
+    }
+
+    function executeTrade(int256 amount, int256 price) external onlyOpenState {
+        require(amount != 0, "PerpetualSwap: Amount cannot be zero");
+
+        int256 collateralChange = amount * price;
+
+        // Update trader's position
+        trades.push(Trade({
+            trader: msg.sender,
+            amount: amount,
+            price: price
+        }));
+
+        // Transfer collateral to/from trader
+        if (collateralChange > 0) {
+            token.safeTransferFrom(msg.sender, address(this), uint256(collateralChange));
+        } else {
+            token.safeTransfer(msg.sender, uint256(-collateralChange));
+        }
+
+        emit TradeExecuted(msg.sender, amount, price);
+    }
+
+    function settlePosition() external onlyOpenState {
+        int256 position = calculatePosition(msg.sender);
+
+        // Reset trader's position
+        delete trades;
+        
+        // Transfer profit or loss to/from trader
+        if (position > 0) {
+            token.safeTransfer(msg.sender, uint256(position));
+        } else if (position < 0) {
+            token.safeTransferFrom(msg.sender, address(this), uint256(-position));
+        }
+
+        emit PositionSettled(msg.sender, position);
+    }
+
+    function calculatePosition(address trader) public view returns (int256) {
+        int256 position = 0;
+
+        for (uint256 i = 0; i < trades.length; i++) {
+            if (trades[i].trader == trader) {
+                position += trades[i].amount * trades[i].price;
+            }
+        }
+
+        return position;
+    }
+
+    function close() external onlyOwner onlyOpenState {
+        isOpen = false;
+    }
+
+    function open() external onlyOwner {
+        isOpen = true;
+    }
+}
