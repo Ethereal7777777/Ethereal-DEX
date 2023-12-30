@@ -1,0 +1,39 @@
+// LendingContract.sol
+pragma solidity ^0.8.0;
+
+contract LendingContract {
+    address public lender;
+    mapping(address => uint256) public balances;
+
+    event Borrowed(address borrower, uint256 amount);
+    event Repaid(address borrower, uint256 amount);
+
+    constructor() {
+        lender = msg.sender;
+    }
+
+    modifier onlyLender() {
+        require(msg.sender == lender, "Only the lender can perform this action");
+        _;
+    }
+
+    function borrow(uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        require(balances[msg.sender] == 0, "You have an existing balance");
+
+        balances[msg.sender] = amount;
+        emit Borrowed(msg.sender, amount);
+    }
+
+    function repay() external payable {
+        require(balances[msg.sender] > 0, "No outstanding balance");
+        require(msg.value == balances[msg.sender], "Incorrect repayment amount");
+
+        address payable recipient = payable(lender);
+        recipient.transfer(msg.value);
+
+        balances[msg.sender] = 0;
+
+        emit Repaid(msg.sender, msg.value);
+    }
+}
