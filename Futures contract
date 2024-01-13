@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DecentralizedFuturesExchange {
+    address public owner;
+    mapping(address => uint256) public balances;
+
+    event TradeExecuted(address indexed buyer, address indexed seller, uint256 quantity, uint256 price);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+
+    function deposit() external payable {
+        balances[msg.sender] += msg.value;
+    }
+
+    function withdraw(uint256 amount) external {
+        require(amount <= balances[msg.sender], "Insufficient balance");
+        balances[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
+    }
+
+    function executeTrade(address buyer, address seller, uint256 quantity, uint256 price) external onlyOwner {
+        require(balances[buyer] >= quantity * price, "Buyer has insufficient funds");
+
+        balances[buyer] -= quantity * price;
+        balances[seller] += quantity * price;
+
+        emit TradeExecuted(buyer, seller, quantity, price);
+    }
+}
