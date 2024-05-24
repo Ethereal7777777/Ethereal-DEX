@@ -1,0 +1,31 @@
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract Dex {
+    struct Token {
+        bytes32 ticker;
+        address tokenAddress;
+    }
+
+    mapping(bytes32 => Token) public tokens;
+    bytes32[] public tokenList;
+
+    function addToken(bytes32 ticker, address tokenAddress) external {
+        tokens[ticker] = Token(ticker, tokenAddress);
+        tokenList.push(ticker);
+    }
+
+    function deposit(uint amount, bytes32 ticker) tokenExist(ticker) external {
+        ERC20(tokens[ticker].tokenAddress).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function withdraw(uint amount, bytes32 ticker) tokenExist(ticker) external {
+        ERC20(tokens[ticker].tokenAddress).transfer(msg.sender, amount);
+    }
+
+    modifier tokenExist(bytes32 ticker) {
+        require(tokens[ticker].tokenAddress != address(0), "This token does not exist");
+        _;
+    }
+}
