@@ -1,0 +1,65 @@
+import uuid
+
+class CryptoExchange:
+    def __init__(self):
+        self.users = {}
+        self.balances = {}
+
+    def register_user(self, username):
+        user_id = str(uuid.uuid4())
+        self.users[user_id] = username
+        self.balances[user_id] = {"BTC": 0, "ETH": 0, "USD": 0}
+        print(f"User {username} registered with ID: {user_id}")
+        return user_id
+
+    def deposit(self, user_id, currency, amount):
+        if user_id in self.users:
+            self.balances[user_id][currency] += amount
+            print(f"Deposited {amount} {currency} to user {self.users[user_id]}")
+        else:
+            print("User not found!")
+
+    def withdraw(self, user_id, currency, amount):
+        if user_id in self.users:
+            if self.balances[user_id][currency] >= amount:
+                self.balances[user_id][currency] -= amount
+                print(f"Withdrew {amount} {currency} from user {self.users[user_id]}")
+            else:
+                print("Insufficient balance!")
+        else:
+            print("User not found!")
+
+    def trade(self, user_id, from_currency, to_currency, amount):
+        exchange_rates = {"BTC_USD": 30000, "ETH_USD": 2000, "BTC_ETH": 15}
+        if user_id in self.users:
+            if self.balances[user_id][from_currency] >= amount:
+                if from_currency + "_" + to_currency in exchange_rates:
+                    rate = exchange_rates[from_currency + "_" + to_currency]
+                    converted_amount = amount * rate
+                    self.balances[user_id][from_currency] -= amount
+                    self.balances[user_id][to_currency] += converted_amount
+                    print(f"Traded {amount} {from_currency} for {converted_amount} {to_currency} for user {self.users[user_id]}")
+                else:
+                    print("Unsupported currency pair!")
+            else:
+                print("Insufficient balance!")
+        else:
+            print("User not found!")
+
+    def get_balance(self, user_id):
+        if user_id in self.users:
+            return self.balances[user_id]
+        else:
+            print("User not found!")
+            return None
+
+# Example Usage
+exchange = CentralizedCryptoExchange()
+user_id = exchange.register_user("Alice")
+exchange.deposit(user_id, "USD", 10000)
+exchange.trade(user_id, "USD", "BTC", 1)
+balance = exchange.get_balance(user_id)
+print(f"Balance for user Alice: {balance}")
+exchange.withdraw(user_id, "BTC", 0.1)
+balance = exchange.get_balance(user_id)
+print(f"Balance for user Alice: {balance}")
